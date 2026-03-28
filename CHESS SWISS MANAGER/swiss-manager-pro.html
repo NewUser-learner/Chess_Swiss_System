@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swiss-Manager Pro · FIDE Tournament System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b12;--s1:#0e1420;--s2:#131c2e;--s3:#1b2540;
+  --border:#1e2d44;--border2:#263852;
+  --accent:#1e6fff;--accent2:#1455d4;--accentg:rgba(30,111,255,.13);--accentl:rgba(30,111,255,.06);
+  --green:#10b981;--red:#f04747;--amber:#f59e0b;--violet:#8b5cf6;--cyan:#06b6d4;
+  --gold:#f59e0b;--silver:#94a3b8;--bronze:#b45309;
+  --txt:#c8d8f0;--txt2:#6e86a8;--txt3:#364d68;
+  --white-sq:#dce8fa;--black-sq:#162035;--r:4px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;font-size:13px}
+
+/* ── TOPBAR ── */
+#topbar{height:46px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:200}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:2px;color:#fff;display:flex;align-items:center;gap:7px}
+.logo em{color:var(--accent);font-style:normal}
+.logo-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--txt3);letter-spacing:1px;border:1px solid var(--border2);padding:2px 5px;border-radius:3px;margin-left:4px}
+.vsep{width:1px;height:20px;background:var(--border2)}
+#tb-info{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt3);display:flex;gap:12px}
+.tbc{display:flex;align-items:center;gap:4px}.tbc b{color:var(--txt2)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+
+/* ── LAYOUT ── */
+#shell{display:flex;flex:1;overflow:hidden}
+#sidebar{width:266px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-scroll{overflow-y:auto;flex:1;padding:11px}
+.sb-scroll::-webkit-scrollbar{width:3px}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sb-title{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:7px}
+.sb-sec{margin-bottom:14px}
+
+/* Drop zone */
+#dropZone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:18px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+#dropZone:hover,#dropZone.over{border-color:var(--accent);background:var(--accentl)}
+#dropZone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dz-icon{font-size:22px;margin-bottom:5px}
+.dz-text{font-size:11px;color:var(--txt2)}.dz-sub{font-size:9px;color:var(--txt3);margin-top:3px}
+
+/* Form */
+.fld{margin-bottom:6px}
+.fld label{display:block;font-size:9px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.8px}
+input[type=text],input[type=number],select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--txt);font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:5px 8px;border-radius:var(--r);outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accentg)}
+input::placeholder{color:var(--txt3)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+
+/* Buttons */
+.btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:11px;padding:6px 11px;border-radius:var(--r);border:none;cursor:pointer;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-g{background:var(--s2);border:1px solid var(--border2);color:var(--txt2)}.btn-g:hover{border-color:var(--accent);color:var(--accent)}
+.btn-d{background:rgba(240,71,71,.1);border:1px solid rgba(240,71,71,.25);color:var(--red)}.btn-d:hover{background:rgba(240,71,71,.2)}
+.btn-a{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--amber)}.btn-a:hover{background:rgba(245,158,11,.2)}
+.btn-grn{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--green)}.btn-grn:hover{background:rgba(16,185,129,.2)}
+.btn-full{width:100%}.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn-xs{padding:2px 7px;font-size:10px}
+.btn-sm{padding:4px 9px;font-size:11px}
+
+/* Sidebar player list */
+#sbPL{max-height:240px;overflow-y:auto}
+#sbPL::-webkit-scrollbar{width:3px}
+.spitem{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:3px;border-bottom:1px solid var(--border);transition:background .1s}
+.spitem:hover{background:var(--s2)}
+.spsno{font-family:'IBM Plex Mono',monospace;color:var(--txt3);min-width:22px;font-size:10px}
+.spname{flex:1;font-weight:500;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.sprtg{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:10px;min-width:34px;text-align:right}
+.spdel{cursor:pointer;color:var(--txt3);font-size:10px;border:none;background:none;padding:1px 3px;border-radius:2px;transition:color .1s}
+.spdel:hover{color:var(--red)}
+
+/* Round nav */
+#rnav{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px}
+.rnb{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:var(--bg);color:var(--txt3);cursor:pointer;transition:all .12s}
+.rnb.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rnb.locked::after{content:'🔒';font-size:8px;margin-left:2px}
+
+/* Main area */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#tabbar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--border);padding:0 14px;flex-shrink:0}
+.tab{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;padding:11px 16px;border:none;background:none;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.8px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--txt2)}
+.tab-right{margin-left:auto;display:flex;gap:6px;padding:7px 0}
+.panel{flex:1;overflow:auto;padding:14px}
+.panel::-webkit-scrollbar{width:5px;height:5px}
+.panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* Data table */
+.twrap{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:11px}
+table.dt th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);padding:7px 9px;border-bottom:1px solid var(--border);background:var(--s2);white-space:nowrap;position:sticky;top:0;z-index:2}
+table.dt td{padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+table.dt tbody tr:last-child td{border-bottom:none}
+table.dt tbody tr:hover td{background:rgba(30,111,255,.04)}
+.tac{text-align:center}.tar{text-align:right}
+.mc{font-family:'IBM Plex Mono',monospace}
+.rc{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt2)}
+.ptsc{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--txt);text-align:center}
+.tbc-cell{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt2);text-align:right}
+
+/* Color indicators */
+.ci{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:2px;flex-shrink:0;font-size:7px;font-weight:800}
+.ci-w{background:var(--white-sq);border:1px solid #b8cce8;color:#1a2f50}
+.ci-b{background:var(--black-sq);border:1px solid #1e3358;color:#5a7aaa}
+.pncell{display:flex;align-items:center;gap:6px;min-width:130px}
+.pnname{font-weight:500;color:var(--txt);overflow:hidden;text-overflow:ellipsis;max-width:155px}
+.pnctr{font-size:9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+.ur-badge{font-size:8px;color:var(--violet);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);padding:1px 4px;border-radius:2px}
+
+/* Result controls */
+.rsel{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;background:var(--bg);border:1px solid var(--border2);color:var(--txt);padding:3px 5px;border-radius:3px;cursor:pointer;width:74px;text-align:center}
+.rsel:focus{outline:none;border-color:var(--accent)}
+/* Result display badge with edit pencil */
+.res-wrap{display:inline-flex;align-items:center;gap:5px}
+.rlk{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:3px 7px;border-radius:3px;border:1px solid var(--border);display:inline-block;min-width:60px;text-align:center;color:var(--txt2);background:var(--s2)}
+.r10{color:var(--green)!important;border-color:rgba(16,185,129,.3)!important}
+.r01{color:var(--red)!important;border-color:rgba(240,71,71,.3)!important}
+.rhh{color:var(--amber)!important;border-color:rgba(245,158,11,.3)!important}
+.edit-btn{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:11px;padding:2px 4px;border-radius:3px;transition:all .12s;display:inline-flex;align-items:center}
+.edit-btn:hover{color:var(--accent);background:var(--accentl)}
+
+/* Bye */
+.bye-row td{background:rgba(139,92,246,.04)!important}
+.byebdg{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--violet);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);padding:2px 7px;border-radius:10px}
+
+/* Rank medals */
+.rk1{color:var(--gold)}.rk2{color:var(--silver)}.rk3{color:var(--bronze)}
+.rnkcell{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:center;width:30px}
+
+/* Color history dots */
+.chw{display:flex;gap:2px;align-items:center}
+.chd{width:8px;height:8px;border-radius:1px;border:1px solid var(--border2)}
+.chd-w{background:var(--white-sq)}.chd-b{background:#1a2e50}.chd-bye{background:rgba(139,92,246,.45)}
+
+/* Alerts */
+.alert{padding:9px 12px;border-radius:var(--r);font-size:11px;margin-bottom:9px;display:flex;align-items:flex-start;gap:7px}
+.aw{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--amber)}
+.ae{background:rgba(240,71,71,.08);border:1px solid rgba(240,71,71,.2);color:var(--red)}
+.aok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);color:var(--green)}
+.ai{background:var(--accentg);border:1px solid rgba(30,111,255,.2);color:#7ab0ff}
+
+/* Badges */
+.bdg{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;padding:2px 6px;border-radius:9px;letter-spacing:.5px}
+.bdg-ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--green)}
+.bdg-am{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--amber)}
+.bdg-ac{background:rgba(30,111,255,.1);border:1px solid rgba(30,111,255,.25);color:var(--accent)}
+.bdg-fin{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--gold)}
+
+/* Empty state */
+.empty{text-align:center;padding:55px 20px;color:var(--txt3)}
+.eico{font-size:34px;margin-bottom:10px;opacity:.3}
+.ettl{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:1px;color:var(--txt2);margin-bottom:5px}
+.esub{font-size:11px}
+
+/* Modal */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
+#modal.open{display:flex}
+.mbox{background:var(--s1);border:1px solid var(--border2);border-radius:8px;padding:22px;min-width:340px;max-width:560px;box-shadow:0 24px 64px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto}
+.mttl{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.macts{display:flex;gap:7px;justify-content:flex-end;margin-top:18px}
+
+/* Final standings overlay (Feature 2) */
+#finalModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px}
+#finalModal.open{display:flex}
+.final-box{background:var(--s1);border:1px solid var(--border2);border-radius:10px;width:100%;max-width:900px;box-shadow:0 30px 80px rgba(0,0,0,.7);overflow:hidden}
+.final-header{background:linear-gradient(135deg,#0a1628 0%,#0e1e3a 40%,#0f2040 100%);padding:28px 32px 20px;border-bottom:1px solid var(--border2);text-align:center;position:relative}
+.final-header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(30,111,255,.15) 0%,transparent 70%);pointer-events:none}
+.final-trophy{font-size:38px;margin-bottom:8px;display:block}
+.final-name{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#fff;margin-bottom:4px}
+.final-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt3);display:flex;justify-content:center;gap:20px;flex-wrap:wrap}
+.final-meta span{display:flex;align-items:center;gap:5px}
+.final-body{padding:24px 28px}
+.podium{display:flex;gap:16px;margin-bottom:24px;justify-content:center}
+.podium-card{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:16px 20px;text-align:center;min-width:160px;position:relative;overflow:hidden}
+.podium-card::before{content:'';position:absolute;inset:0;opacity:.06}
+.podium-1::before{background:var(--gold)}
+.podium-2::before{background:var(--silver)}
+.podium-3::before{background:var(--bronze)}
+.podium-1{border-color:rgba(245,158,11,.3)}
+.podium-2{border-color:rgba(148,163,184,.25)}
+.podium-3{border-color:rgba(180,83,9,.25)}
+.podium-medal{font-size:26px;display:block;margin-bottom:6px}
+.podium-name{font-weight:600;font-size:13px;color:var(--txt);margin-bottom:3px}
+.podium-country{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--txt3);margin-bottom:6px}
+.podium-pts{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;margin-bottom:2px}
+.podium-1 .podium-pts{color:var(--gold)}
+.podium-2 .podium-pts{color:var(--silver)}
+.podium-3 .podium-pts{color:var(--bronze)}
+.podium-bh{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt3)}
+
+/* Section header */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sh-ttl{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:var(--txt)}
+.sh-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt3);margin-left:8px}
+.div{height:1px;background:var(--border);margin:9px 0}
+
+/* Pairing explanation panel */
+.pair-info{background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:11px;color:var(--txt2);line-height:1.6}
+.pair-info strong{color:var(--accent);font-family:'IBM Plex Mono',monospace}
+
+/* Row highlight for edited result */
+@keyframes editFlash{0%{background:rgba(30,111,255,.15)}100%{background:transparent}}
+.result-edited{animation:editFlash .8s ease}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .2s ease}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* Print styles for final standings */
+@media print{
+  #topbar,#shell,#modal{display:none!important}
+  #finalModal{display:flex!important;position:static;background:white;padding:0}
+  .final-box{box-shadow:none;border:none;max-width:100%}
+  .macts,.final-close-btn{display:none!important}
+  body{background:white;color:black}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="logo">♟ Swiss<em>·</em>Manager<span class="logo-tag">FIDE PRO</span></div>
+  <div class="vsep"></div>
+  <div id="tb-info">
+    <div class="tbc"><span>Tournament</span><b id="tb-name">—</b></div>
+    <div class="tbc"><span>Round</span><b id="tb-round">—/—</b></div>
+    <div class="tbc"><span>Players</span><b id="tb-players">0</b></div>
+  </div>
+  <div class="tb-right">
+    <span id="tb-badge" class="bdg bdg-ok">SETUP</span>
+    <button class="btn btn-d btn-xs" onclick="confirmReset()">⟳ Reset</button>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div id="shell">
+
+<!-- SIDEBAR -->
+<div id="sidebar"><div class="sb-scroll">
+
+  <div class="sb-sec">
+    <div class="sb-title">Import Players</div>
+    <div id="dropZone" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+      <input type="file" id="fileInp" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+      <div class="dz-icon">📂</div>
+      <div class="dz-text">Drop Excel / CSV</div>
+      <div class="dz-sub">Name · FIDE ID · Rating · Country</div>
+    </div>
+    <div id="impAlert" style="margin-top:5px"></div>
+  </div>
+
+  <div class="div"></div>
+
+  <div class="sb-sec">
+    <div class="sb-title">Tournament Setup</div>
+    <div class="fld"><label>Name</label><input type="text" id="f-name" value="Open Championship 2025"></div>
+    <div class="g2">
+      <div class="fld"><label>Rounds</label><input type="number" id="f-rounds" value="7" min="1" max="13"></div>
+      <div class="fld"><label>Tiebreaks</label>
+        <select id="f-tb">
+          <option value="BH,BHC1,MBH,SB,W,P">FIDE Standard</option>
+          <option value="DE,BH,SB,W">Direct Enc. First</option>
+          <option value="BH,SB,W,P">BH → SB → Wins</option>
+          <option value="BHC1,MBH,SB,W">BH-C1 Priority</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <div class="sb-sec">
+    <div class="sb-title">Add Player</div>
+    <div class="fld"><label>Name</label><input type="text" id="ap-n" placeholder="Full name" onkeydown="if(event.key==='Enter')addPlayer()"></div>
+    <div class="g3">
+      <div class="fld"><label>FIDE ID</label><input type="text" id="ap-f" placeholder="0"></div>
+      <div class="fld"><label>Rating</label><input type="number" id="ap-r" placeholder="0" min="0" max="3000"></div>
+      <div class="fld"><label>Country</label><input type="text" id="ap-c" placeholder="IND" maxlength="3"></div>
+    </div>
+    <button class="btn btn-g btn-full" onclick="addPlayer()">＋ Add Player</button>
+  </div>
+
+  <div class="div"></div>
+
+  <div class="sb-sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="sb-title" style="margin:0">Players (<span id="pc">0</span>/300)</div>
+      <button class="btn btn-g btn-xs" onclick="clearPlayers()">Clear</button>
+    </div>
+    <div id="sbPL"></div>
+    <div style="margin-top:7px">
+      <button class="btn btn-p btn-full" id="btn-start" onclick="startTournament()">🏁 Start Tournament</button>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <div id="roundControls" style="display:none">
+    <div class="sb-sec">
+      <div class="sb-title">Round Control</div>
+      <div id="rnav"></div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button class="btn btn-p btn-full" id="btn-pair" onclick="pairNextRound()">⚡ Pair Next Round</button>
+        <!-- FIX: Lock is now only a soft lock; unlock is always available -->
+        <button class="btn btn-a btn-full" id="btn-lock" onclick="lockCurrentRound()" style="display:none">🔒 Lock Round</button>
+        <button class="btn btn-g btn-full" id="btn-unlock" onclick="unlockCurrentRound()" style="display:none">🔓 Unlock Round</button>
+        <button class="btn btn-grn btn-full" id="btn-final" onclick="showFinalStandings()" style="display:none">🏆 Final Standings</button>
+      </div>
+      <div id="rstatus" style="margin-top:5px;font-size:10px;color:var(--txt3)"></div>
+    </div>
+  </div>
+
+</div></div><!-- sidebar -->
+
+<!-- MAIN -->
+<div id="main">
+  <div id="tabbar">
+    <button class="tab active" data-tab="pairings" onclick="switchTab('pairings')">Pairings</button>
+    <button class="tab" data-tab="standings" onclick="switchTab('standings')">Standings</button>
+    <button class="tab" data-tab="players" onclick="switchTab('players')">Players</button>
+    <button class="tab" data-tab="info" onclick="switchTab('info')">How Pairings Work</button>
+    <div class="tab-right" id="tab-right"></div>
+  </div>
+
+  <div class="panel" id="panel-pairings">
+    <div id="pc-pairings"><div class="empty"><div class="eico">♟</div><div class="ettl">No Pairings Yet</div><div class="esub">Add players and start the tournament</div></div></div>
+  </div>
+  <div class="panel" id="panel-standings" style="display:none">
+    <div id="pc-standings"><div class="empty"><div class="eico">🏆</div><div class="ettl">No Standings</div><div class="esub">Standings appear once the tournament begins</div></div></div>
+  </div>
+  <div class="panel" id="panel-players" style="display:none">
+    <div id="pc-players"><div class="empty"><div class="eico">👥</div><div class="ettl">No Players</div><div class="esub">Import Excel/CSV or add manually</div></div></div>
+  </div>
+  <div class="panel" id="panel-info" style="display:none">
+    <div id="pc-info"></div>
+  </div>
+</div>
+</div><!-- shell -->
+
+<!-- CONFIRM MODAL -->
+<div id="modal"><div class="mbox">
+  <div class="mttl" id="mttl">Confirm</div>
+  <div id="mbody" style="font-size:12px;color:var(--txt2);line-height:1.6"></div>
+  <div class="macts">
+    <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-d" id="mconfirm">Confirm</button>
+  </div>
+</div></div>
+
+<!-- FINAL STANDINGS MODAL (Feature 2) -->
+<div id="finalModal">
+  <div class="final-box fu">
+    <div class="final-header">
+      <span class="final-trophy">🏆</span>
+      <div class="final-name" id="fn-name">Tournament Name</div>
+      <div class="final-meta" id="fn-meta"></div>
+    </div>
+    <div class="final-body">
+      <div class="podium" id="fn-podium"></div>
+      <div class="twrap">
+        <table class="dt" id="fn-table">
+          <thead><tr>
+            <th class="tac" style="width:36px">#</th>
+            <th class="tac">SNo</th>
+            <th>Player</th>
+            <th class="tac">FED</th>
+            <th class="tar">RTG</th>
+            <th class="tac">Pts</th>
+            <th class="tar">BH</th>
+            <th class="tar">BH-C1</th>
+            <th class="tar">Med-BH</th>
+            <th class="tar">SB</th>
+            <th class="tar">Wins</th>
+            <th>Colors</th>
+          </tr></thead>
+          <tbody id="fn-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;line-height:1.7">
+        BH = Buchholz &nbsp;·&nbsp; BH-C1 = Buchholz Cut-1 &nbsp;·&nbsp; Med-BH = Median Buchholz &nbsp;·&nbsp; SB = Sonneborn-Berger &nbsp;·&nbsp; Wins = Full-point results only
+      </div>
+      <div class="macts" style="margin-top:14px">
+        <button class="btn btn-g final-close-btn" onclick="closeFinalModal()">Close</button>
+        <button class="btn btn-p" onclick="window.print()">🖨 Print / Export PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════
+//  DATABASE  — localStorage-backed
+// ═══════════════════════════════════════════════════════════════════
+const DB = {
+  KEY: 'swissmgr_v4',
+  d: null,
+
+  load() {
+    try { const r = localStorage.getItem(this.KEY); if (r) { this.d = JSON.parse(r); this._migrate(); return; } } catch(e) {}
+    this._reset();
+  },
+
+  _migrate() {
+    // Ensure all required fields exist after a version upgrade
+    if (!this.d.tournament) this._reset();
+    if (this.d.tournament.tbOrder === undefined) this.d.tournament.tbOrder = 'BH,BHC1,MBH,SB,W,P';
+    // Ensure every pairing has the editHistory field
+    for (const round of (this.d.rounds || [])) {
+      for (const p of (round.pairings || [])) {
+        if (!p.editHistory) p.editHistory = [];
+      }
+    }
+  },
+
+  _reset() {
+    this.d = {
+      tournament: { id:1, name:'', date:new Date().toISOString().slice(0,10), totalRounds:7, currentRound:0, status:'setup', started:false, tbOrder:'BH,BHC1,MBH,SB,W,P' },
+      players: [],
+      rounds:  [],
+    };
+  },
+
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.d)); } catch(e) { console.warn('localStorage save failed', e); } },
+
+  get t()       { return this.d.tournament; },
+  get players() { return this.d.players; },
+  get rounds()  { return this.d.rounds; },
+  MAX: 300,
+
+  // ── players ──
+  bulkAdd(arr) {
+    if (this.t.started) throw new Error('Cannot add players after tournament start.');
+    let added = 0; const warnings = [];
+    for (const p of arr) {
+      if (this.players.length >= this.MAX) { if (!warnings.length) warnings.push(`Truncated at 300 — ${arr.length - added} skipped.`); break; }
+      this._push(p); added++;
+    }
+    this._seed(); this.save();
+    return { added, warnings };
+  },
+
+  addOne(p) {
+    if (this.players.length >= this.MAX) throw new Error('Player limit (300) reached.');
+    if (this.t.started) throw new Error('Cannot add players after tournament start.');
+    this._push(p); this._seed(); this.save();
+  },
+
+  _push(p) {
+    const rtg = parseInt(String(p.rating||'').replace(/\D/g,'')) || 0;
+    this.players.push({ id:uid(), sno:0, name:String(p.name||'').trim(), fideId:String(p.fideId||'').trim(), rating:rtg, country:String(p.country||'').trim().toUpperCase().slice(0,3), isUnrated:rtg===0 });
+  },
+
+  removePlayer(id) {
+    if (this.t.started) throw new Error('Cannot remove players after tournament start.');
+    this.d.players = this.players.filter(p => p.id !== id); this._seed(); this.save();
+  },
+
+  clearPlayers() {
+    if (this.t.started) throw new Error('Cannot clear after tournament start.');
+    this.d.players = []; this.save();
+  },
+
+  _seed() {
+    const rated   = this.players.filter(p=>!p.isUnrated).sort((a,b)=>b.rating-a.rating||a.name.localeCompare(b.name));
+    const unrated = this.players.filter(p=> p.isUnrated).sort((a,b)=>a.name.localeCompare(b.name));
+    [...rated,...unrated].forEach((p,i)=>p.sno=i+1);
+    this.d.players = [...rated,...unrated];
+  },
+
+  // ── tournament lifecycle ──
+  start(name, rounds, tbOrder) {
+    if (this.players.length < 2) throw new Error('Need at least 2 players.');
+    Object.assign(this.t, { name, totalRounds:rounds, tbOrder:tbOrder||'BH,BHC1,MBH,SB,W,P', started:true, status:'open', currentRound:0 });
+    this.save();
+  },
+
+  reset() { this._reset(); this.save(); },
+
+  pushRound(pairings) {
+    const num = this.rounds.length + 1;
+    if (num > this.t.totalRounds) throw new Error('All rounds already paired.');
+    // Anti-double-pairing check
+    for (const pr of pairings) {
+      if (pr.bye) continue;
+      const dup = this.rounds.some(r => r.pairings.some(p =>
+        !p.bye && ((p.white===pr.white&&p.black===pr.black)||(p.white===pr.black&&p.black===pr.white))
+      ));
+      if (dup) throw new Error(`Double-pairing prevented: ${this.pid(pr.white)?.name||pr.white} vs ${this.pid(pr.black)?.name||pr.black}`);
+    }
+    this.rounds.push({ number:num, locked:false, pairings });
+    this.t.currentRound = num;
+    // Mark tournament finished if this was the last round
+    if (num === this.t.totalRounds) this.t.status = 'open'; // still open until explicitly finished
+    this.save();
+  },
+
+  // FIX Feature 1: setResult now always works regardless of lock state when called from edit
+  setResult(roundNum, pairingId, result, force) {
+    const round = this.rounds.find(r=>r.number===roundNum);
+    if (!round) throw new Error('Round not found.');
+    if (round.locked && !force) throw new Error('Round is locked. Use the edit (✎) button to correct a result.');
+    const pair = round.pairings.find(p=>p.id===pairingId);
+    if (!pair) throw new Error('Pairing not found.');
+    // Record edit history for audit trail
+    if (!pair.editHistory) pair.editHistory = [];
+    if (pair.result !== result) {
+      pair.editHistory.push({ from: pair.result||'', to: result, at: new Date().toISOString() });
+    }
+    pair.result = result;
+    this.save();
+  },
+
+  lockRound(num) {
+    const r = this.rounds.find(r=>r.number===num);
+    if (r) { r.locked = true; this.save(); }
+  },
+
+  // FIX Bug: Unlock is now always available
+  unlockRound(num) {
+    const r = this.rounds.find(r=>r.number===num);
+    if (r) { r.locked = false; this.save(); }
+  },
+
+  pid(id) { return this.players.find(p=>p.id===id); },
+};
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  GAME RECORD BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function buildRecord() {
+  const pts={}, colorHist={}, oppList={}, gameRes={};
+  DB.players.forEach(p=>{ pts[p.id]=0; colorHist[p.id]=[]; oppList[p.id]=[]; gameRes[p.id]=[]; });
+
+  for (const round of DB.rounds) {
+    for (const pair of round.pairings) {
+      if (pair.bye) {
+        pts[pair.white]=(pts[pair.white]||0)+1;
+        colorHist[pair.white].push('bye');
+        oppList[pair.white].push(null);
+        gameRes[pair.white].push({opp:null,score:1,round:round.number});
+        continue;
+      }
+      const r = pair.result;
+      // Always record color history (even for in-progress games)
+      if (pair.white && colorHist[pair.white]) colorHist[pair.white].push('w');
+      if (pair.black && colorHist[pair.black]) colorHist[pair.black].push('b');
+      if (pair.white && oppList[pair.white]) oppList[pair.white].push(pair.black);
+      if (pair.black && oppList[pair.black]) oppList[pair.black].push(pair.white);
+
+      let ws=null, bs=null;
+      if (r==='1-0')  { ws=1; bs=0; }
+      else if(r==='0-1')  { ws=0; bs=1; }
+      else if(r==='½-½')  { ws=0.5; bs=0.5; }
+
+      if (ws !== null) {
+        pts[pair.white]=(pts[pair.white]||0)+ws;
+        pts[pair.black]=(pts[pair.black]||0)+bs;
+      }
+
+      if (pair.white) gameRes[pair.white].push({opp:pair.black, score:ws, round:round.number});
+      if (pair.black) gameRes[pair.black].push({opp:pair.white, score:bs, round:round.number});
+    }
+  }
+  return {pts,colorHist,oppList,gameRes};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TIEBREAK ENGINE — Full FIDE Suite
+// ═══════════════════════════════════════════════════════════════════
+function computeTiebreaks(rec) {
+  const {pts,oppList,gameRes} = rec;
+
+  const BH    = id => oppList[id].reduce((s,oid)=>s+(oid?(pts[oid]||0):0),0);
+  const BHC1  = id => { const sc=oppList[id].map(oid=>oid?(pts[oid]||0):0).sort((a,b)=>a-b); return sc.length<=1?BH(id):sc.slice(1).reduce((s,v)=>s+v,0); };
+  const MBH   = id => { const sc=oppList[id].map(oid=>oid?(pts[oid]||0):0).sort((a,b)=>a-b); return sc.length<=2?BH(id):sc.slice(1,sc.length-1).reduce((s,v)=>s+v,0); };
+  const SB    = id => gameRes[id].reduce((s,g)=>s+(g.opp!==null&&g.score!==null?g.score*(pts[g.opp]||0):0),0);
+  const W     = id => gameRes[id].filter(g=>g.score===1).length;
+  const P     = id => { let cum=0,total=0; gameRes[id].forEach(g=>{cum+=(g.score!==null?g.score:0);total+=cum;}); return total; };
+  const DE    = (idA,idB) => gameRes[idA].filter(g=>g.opp===idB&&g.score!==null).reduce((s,g)=>s+g.score,0);
+
+  return {BH,BHC1,MBH,SB,W,P,DE};
+}
+
+function computeStandings() {
+  const rec = buildRecord();
+  const tb  = computeTiebreaks(rec);
+  const tbOrder = (DB.t.tbOrder||'BH,BHC1,MBH,SB,W,P').split(',');
+
+  const rows = DB.players.map(p => {
+    const r = { player:p, pts:rec.pts[p.id]||0, colorHist:rec.colorHist[p.id]||[] };
+    ['BH','BHC1','MBH','SB','W','P'].forEach(k => r[k] = tb[k](p.id));
+    return r;
+  });
+
+  rows.sort((a,b) => {
+    if (b.pts!==a.pts) return b.pts-a.pts;
+    for (const k of tbOrder) {
+      if (k==='DE') { const d=tb.DE(a.player.id,b.player.id)-tb.DE(b.player.id,a.player.id); if(d!==0) return -d; continue; }
+      const d=(b[k]||0)-(a[k]||0); if(d!==0) return d;
+    }
+    return a.player.sno - b.player.sno;
+  });
+
+  return {rows, tb, rec};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FIDE DUTCH SWISS PAIRING ENGINE
+// ═══════════════════════════════════════════════════════════════════
+
+function colorCD(hist)   { return hist.filter(c=>c==='w').length - hist.filter(c=>c==='b').length; }
+
+function colorObligation(hist) {
+  const diff = colorCD(hist);
+  if (diff>=2)  return 'b';
+  if (diff<=-2) return 'w';
+  const real = hist.filter(c=>c!=='bye');
+  if (real.length>=2 && real[real.length-1]===real[real.length-2]) return real[real.length-1]==='w'?'b':'w';
+  return null;
+}
+
+function colorWants(hist) {
+  const ob = colorObligation(hist); if (ob) return ob;
+  const real = hist.filter(c=>c!=='bye'); if (!real.length) return null;
+  return real[real.length-1]==='w'?'b':'w';
+}
+
+function assignColors(idA, idB, histA, histB) {
+  const obA=colorObligation(histA), obB=colorObligation(histB);
+  if (obA && obB) {
+    if (obA!==obB) return obA==='w'?{w:idA,b:idB}:{w:idB,b:idA};
+    const absA=Math.abs(colorCD(histA)), absB=Math.abs(colorCD(histB));
+    if (absA>=absB) return obA==='w'?{w:idA,b:idB}:{w:idB,b:idA};
+    return obB==='w'?{w:idB,b:idA}:{w:idA,b:idB};
+  }
+  if (obA) return obA==='w'?{w:idA,b:idB}:{w:idB,b:idA};
+  if (obB) return obB==='w'?{w:idB,b:idA}:{w:idA,b:idB};
+  const wa=colorWants(histA);
+  if (wa==='w') return {w:idA,b:idB}; if (wa==='b') return {w:idB,b:idA};
+  const pa=DB.pid(idA), pb=DB.pid(idB);
+  return (pa&&pb&&pa.sno<pb.sno)?{w:idA,b:idB}:{w:idB,b:idA};
+}
+
+function hasPlayed(id1,id2) {
+  return DB.rounds.some(r=>r.pairings.some(p=>!p.bye&&((p.white===id1&&p.black===id2)||(p.white===id2&&p.black===id1))));
+}
+
+function hasByeAlready(id) {
+  return DB.rounds.some(r=>r.pairings.some(p=>p.bye&&p.white===id));
+}
+
+function pairGroup(group, colorHist) {
+  if (group.length<2) return {pairs:[],floaters:[...group]};
+  const n=group.length, half=Math.floor(n/2);
+  const S1=group.slice(0,half), S2=group.slice(half,half*2);
+  const leftover=n%2===1?group[n-1]:null;
+  const usedS2=new Set(), pairs=[], floaters=leftover?[leftover]:[];
+
+  for (let i=0;i<S1.length;i++) {
+    const p=S1[i], hP=colorHist[p.id]||[];
+    let bestJ=-1, bestScore=-Infinity;
+    for (let j=0;j<S2.length;j++) {
+      if (usedS2.has(j)) continue;
+      const q=S2[j], hQ=colorHist[q.id]||[];
+      let score=100;
+      if (hasPlayed(p.id,q.id)) score-=60;
+      const obP=colorObligation(hP), obQ=colorObligation(hQ);
+      if (obP&&obQ&&obP!==obQ) score+=25;
+      else if (obP&&obQ&&obP===obQ) score-=25;
+      else if (obP||obQ) score+=10;
+      score-=Math.abs(i-j)*3;
+      if (score>bestScore) {bestScore=score;bestJ=j;}
+    }
+    if (bestJ!==-1) {
+      usedS2.add(bestJ);
+      const q=S2[bestJ];
+      const {w,b}=assignColors(p.id,q.id,colorHist[p.id]||[],colorHist[q.id]||[]);
+      pairs.push({wId:w,bId:b});
+    } else { floaters.push(p); }
+  }
+  for (let j=0;j<S2.length;j++) if (!usedS2.has(j)) floaters.push(S2[j]);
+  return {pairs,floaters};
+}
+
+function generatePairings() {
+  const roundNum = DB.rounds.length+1;
+  const rec = buildRecord();
+  const {pts,colorHist} = rec;
+
+  // BYE assignment
+  let byeId=null;
+  if (DB.players.length%2===1) {
+    const {rows}=computeStandings();
+    for (let i=rows.length-1;i>=0;i--) { if (!hasByeAlready(rows[i].player.id)) {byeId=rows[i].player.id;break;} }
+    if (!byeId) byeId=rows[rows.length-1].player.id;
+  }
+
+  let finalPairs=[];
+
+  if (roundNum===1) {
+    // ROUND 1: Slaughter — top-half vs bottom-half
+    const pool=DB.players.filter(p=>p.id!==byeId);
+    const n=pool.length, half=Math.floor(n/2);
+    const top=pool.slice(0,half), bot=pool.slice(half);
+    for (let i=0;i<top.length;i++) {
+      if (!bot[i]) break;
+      const p=top[i], q=bot[i];
+      // Alternate color by board: even boards top gets white, odd boards bot gets white
+      const {w,b}=i%2===0?{w:p.id,b:q.id}:{w:q.id,b:p.id};
+      finalPairs.push({wId:w,bId:b});
+    }
+  } else {
+    // ROUND 2+: Score groups
+    const {rows}=computeStandings();
+    const pool=rows.map(r=>r.player).filter(p=>p.id!==byeId);
+
+    const gmap=new Map();
+    for (const p of pool) {
+      const key=pts[p.id]||0;
+      if (!gmap.has(key)) gmap.set(key,[]);
+      gmap.get(key).push(p);
+    }
+    const gkeys=[...gmap.keys()].sort((a,b)=>b-a);
+
+    let floaters=[];
+    for (let gi=0;gi<gkeys.length;gi++) {
+      const group=[...floaters,...gmap.get(gkeys[gi])]; floaters=[];
+      const {pairs,floaters:newF}=pairGroup(group,colorHist);
+      finalPairs.push(...pairs);
+      if (newF.length>0) {
+        if (gi<gkeys.length-1) { floaters=newF; }
+        else {
+          for (let i=0;i+1<newF.length;i+=2) {
+            const p=newF[i],q=newF[i+1];
+            const {w,b}=assignColors(p.id,q.id,colorHist[p.id]||[],colorHist[q.id]||[]);
+            finalPairs.push({wId:w,bId:b});
+          }
+        }
+      }
+    }
+  }
+
+  const result=finalPairs.map((pr,i)=>({
+    id:`r${roundNum}_${i}_${uid()}`,
+    roundNumber:roundNum, white:pr.wId, black:pr.bId, result:'', bye:false, editHistory:[],
+  }));
+  if (byeId) result.push({id:`r${roundNum}_bye_${uid()}`,roundNumber:roundNum,white:byeId,black:null,result:'bye',bye:true,editHistory:[]});
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FILE IMPORT
+// ═══════════════════════════════════════════════════════════════════
+function dzOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('over');}
+function dzLeave(){document.getElementById('dropZone').classList.remove('over');}
+function dzDrop(e){e.preventDefault();dzLeave();handleFile(e.dataTransfer.files[0]);}
+
+function handleFile(file) {
+  if (!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  if (ext==='csv') { Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>processImport(r.data)}); }
+  else {
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try {
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        processImport(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+      } catch(err) { showImpAlert('e','Failed to read file: '+err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function processImport(rows) {
+  const players=rows.map(r=>{
+    const name   =r['Name']   ||r['name']   ||r['NAME']   ||Object.values(r)[0]||'';
+    const fideId =r['FIDE ID']||r['FIDEID'] ||r['fide_id']||r['FideId']||'';
+    const rawRtg =r['Rating'] ||r['rating'] ||r['RTG']    ||r['Rtg']   ||'';
+    const country=r['Country']||r['country']||r['FED']    ||r['fed']   ||'';
+    return{name:String(name).trim(),fideId:String(fideId).trim(),rating:parseInt(String(rawRtg).replace(/\D/g,''))||0,country:String(country).trim()};
+  }).filter(p=>p.name);
+  if (!players.length) return showImpAlert('e','No valid rows found. Required headers: Name, FIDE ID, Rating, Country');
+  if (!DB.t.started) DB.clearPlayers();
+  try {
+    const {added,warnings}=DB.bulkAdd(players);
+    let msg=`✓ Imported ${added} player${added!==1?'s':''}.`;
+    if (warnings.length) msg+='  ⚠ '+warnings[0];
+    showImpAlert(warnings.length?'w':'ok',msg);
+    renderAll();
+  } catch(e) { showImpAlert('e',e.message); }
+}
+
+function showImpAlert(t,msg){
+  const el=document.getElementById('impAlert');
+  el.innerHTML=`<div class="alert ${t==='e'?'ae':t==='w'?'aw':'aok'}" style="margin:0;font-size:10px">${esc(msg)}</div>`;
+  setTimeout(()=>{if(el)el.innerHTML='';},7000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TOURNAMENT LIFECYCLE
+// ═══════════════════════════════════════════════════════════════════
+function startTournament() {
+  const name=document.getElementById('f-name').value.trim()||'Open Championship';
+  const rounds=Math.max(1,Math.min(13,parseInt(document.getElementById('f-rounds').value)||7));
+  const tbOrder=document.getElementById('f-tb').value;
+  try {
+    DB.start(name,rounds,tbOrder);
+    document.getElementById('roundControls').style.display='block';
+    document.getElementById('btn-start').disabled=true;
+    renderAll();
+    pairNextRound();
+  } catch(e) { alert('Cannot start: '+e.message); }
+}
+
+function pairNextRound() {
+  if (DB.t.currentRound>=DB.t.totalRounds) return alert('All rounds have been paired.');
+
+  const cur=DB.rounds.find(r=>r.number===DB.t.currentRound);
+  if (cur && !cur.locked) {
+    const inc=cur.pairings.filter(p=>!p.bye&&!p.result).length;
+    if (inc>0 && !confirm(`${inc} result(s) still missing. Pair the next round anyway? You can still edit results later.`)) return;
+    DB.lockRound(cur.number); // soft lock — can be undone
+  }
+
+  try {
+    const pairings=generatePairings();
+    DB.pushRound(pairings);
+    viewRound=DB.t.currentRound;
+    renderAll();
+    switchTab('pairings');
+  } catch(e) { alert('Pairing error: '+e.message); }
+}
+
+// FIX Bug: Lock is now purely cosmetic/protective — unlock restores edit access
+function lockCurrentRound() {
+  const r=DB.rounds.find(r=>r.number===DB.t.currentRound);
+  if (!r) return;
+  const inc=r.pairings.filter(p=>!p.bye&&!p.result).length;
+  if (inc>0 && !confirm(`${inc} result(s) are still missing. Lock anyway? You can unlock at any time.`)) return;
+  DB.lockRound(r.number); renderAll();
+}
+
+// FIX Bug: Always allow unlock
+function unlockCurrentRound() {
+  const r=DB.rounds.find(r=>r.number===DB.t.currentRound);
+  if (r) { DB.unlockRound(r.number); renderAll(); }
+}
+
+function addPlayer() {
+  const name=document.getElementById('ap-n').value.trim();
+  if (!name) return alert('Name is required.');
+  try {
+    DB.addOne({name,fideId:document.getElementById('ap-f').value.trim(),rating:parseInt(document.getElementById('ap-r').value)||0,country:document.getElementById('ap-c').value.trim()});
+    ['ap-n','ap-f','ap-r','ap-c'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ap-n').focus();
+    renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+function removePlayer(id){try{DB.removePlayer(id);renderAll();}catch(e){alert(e.message);}}
+function clearPlayers(){if(!confirm('Clear all players?'))return;try{DB.clearPlayers();renderAll();}catch(e){alert(e.message);}}
+
+// ─ Result entry (Feature 1: always editable, with edit audit trail)
+function setResult(roundNum, pairingId, val, force) {
+  try {
+    DB.setResult(roundNum, pairingId, val, force||false);
+    renderPairings();
+    renderStandings();
+    updateRoundStatus();
+  } catch(e) {
+    // Round is locked — show edit confirmation
+    if (confirm('This round is locked. Edit this result anyway?\n\nNote: Standings will update immediately.')) {
+      DB.setResult(roundNum, pairingId, val, true);
+      renderPairings(); renderStandings(); updateRoundStatus();
+      // Flash the row
+      setTimeout(()=>{
+        const rows=document.querySelectorAll('.result-edited');
+        rows.forEach(r=>r.classList.remove('result-edited'));
+      },1000);
+    }
+  }
+}
+
+// Edit button on a locked row — switches to dropdown inline
+function editResult(roundNum, pairingId) {
+  // Find the cell and replace the locked display with a live select
+  const cell = document.getElementById(`rescell_${pairingId}`);
+  if (!cell) return;
+  const pair = DB.rounds.find(r=>r.number===roundNum)?.pairings.find(p=>p.id===pairingId);
+  if (!pair) return;
+  cell.innerHTML = `
+    <select class="rsel" id="editing_${pairingId}" onchange="commitEdit(${roundNum},'${pairingId}',this.value)" style="border-color:var(--amber)">
+      <option value="">·</option>
+      <option value="1-0" ${pair.result==='1-0'?'selected':''}>1 - 0</option>
+      <option value="½-½" ${pair.result==='½-½'?'selected':''}>½ - ½</option>
+      <option value="0-1" ${pair.result==='0-1'?'selected':''}>0 - 1</option>
+    </select>
+    <button class="edit-btn" onclick="cancelEdit(${roundNum},'${pairingId}')" title="Cancel" style="color:var(--red)">✕</button>`;
+  document.getElementById(`editing_${pairingId}`)?.focus();
+}
+
+function commitEdit(roundNum, pairingId, val) {
+  DB.setResult(roundNum, pairingId, val, true); // force=true bypasses lock
+  renderPairings(); renderStandings(); updateRoundStatus();
+  // Re-flash the changed row
+  const row = document.getElementById(`prow_${pairingId}`);
+  if (row) { row.classList.remove('result-edited'); void row.offsetWidth; row.classList.add('result-edited'); }
+}
+
+function cancelEdit(roundNum, pairingId) { renderPairings(); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  FEATURE 2: FINAL STANDINGS
+// ═══════════════════════════════════════════════════════════════════
+function showFinalStandings() {
+  const {rows} = computeStandings();
+  const t = DB.t;
+
+  document.getElementById('fn-name').textContent = t.name || 'Tournament';
+  document.getElementById('fn-meta').innerHTML = `
+    <span>📅 ${t.date}</span>
+    <span>👥 ${DB.players.length} Players</span>
+    <span>🔄 ${t.totalRounds} Rounds</span>
+    <span>🏅 System: FIDE Dutch Swiss</span>`;
+
+  // Podium (top 3)
+  const podiumHtml = rows.slice(0,3).map((row,i) => {
+    const medals=['🥇','🥈','🥉'];
+    const p=row.player;
+    return `<div class="podium-card podium-${i+1}">
+      <span class="podium-medal">${medals[i]}</span>
+      <div class="podium-name">${esc(p.name)}</div>
+      <div class="podium-country">${esc(p.country||'—')} ${p.isUnrated?'· UR':('· '+p.rating)}</div>
+      <div class="podium-pts">${fmtPts(row.pts)}</div>
+      <div class="podium-bh">BH: ${fmtPts(row.BH)} · SB: ${fmtPts(row.SB)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('fn-podium').innerHTML = podiumHtml;
+
+  // Full standings table
+  const tbody = rows.map((row,i) => {
+    const rank=i+1;
+    const rkCls=rank===1?'rk1':rank===2?'rk2':rank===3?'rk3':'';
+    const medal=rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
+    const dots=row.colorHist.map(c=>`<span class="chd ${c==='w'?'chd-w':c==='b'?'chd-b':'chd-bye'}"></span>`).join('');
+    return `<tr>
+      <td class="rnkcell ${rkCls}">${medal}</td>
+      <td class="tac mc" style="font-size:10px;color:var(--txt3)">${row.player.sno}</td>
+      <td style="font-weight:600">${esc(row.player.name)}</td>
+      <td class="tac mc" style="font-size:10px">${esc(row.player.country)||'—'}</td>
+      <td class="rc tar">${row.player.isUnrated?'UR':row.player.rating}</td>
+      <td class="ptsc">${fmtPts(row.pts)}</td>
+      <td class="tbc-cell">${fmtPts(row.BH)}</td>
+      <td class="tbc-cell">${fmtPts(row.BHC1)}</td>
+      <td class="tbc-cell">${fmtPts(row.MBH)}</td>
+      <td class="tbc-cell">${fmtPts(row.SB)}</td>
+      <td class="tbc-cell">${row.W}</td>
+      <td><div class="chw">${dots}</div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('fn-body').innerHTML = tbody;
+
+  document.getElementById('finalModal').classList.add('open');
+}
+
+function closeFinalModal() { document.getElementById('finalModal').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  HOW PAIRINGS WORK — Info Panel (answers the user's question)
+// ═══════════════════════════════════════════════════════════════════
+function renderInfoPanel() {
+  document.getElementById('pc-info').innerHTML = `
+    <div style="max-width:720px">
+      <div class="sh"><span class="sh-ttl">How Pairings Are Generated</span></div>
+
+      <div class="pair-info">
+        <strong>SYSTEM USED: FIDE Dutch Swiss (BBP — Basic Belgian Pairing)</strong><br>
+        Pairings are made in two phases: a special <em>Round 1 slaughter</em>, then score-group based pairing for all subsequent rounds.
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div class="pair-info">
+          <strong>🔵 ROUND 1 — Slaughter Pairing (Top-Half vs Bottom-Half)</strong><br>
+          All players are ranked by rating (highest to lowest). Unrated players go to the bottom, sorted alphabetically.<br>
+          The field is split exactly in half. <em>Seed #1 plays Seed #(N/2 + 1), Seed #2 plays Seed #(N/2 + 2)</em>, and so on.<br><br>
+          <strong>Example with 20 players:</strong> Seed 1 (rating 2830) vs Seed 11 (rating 2698) · Seed 2 vs Seed 12 · … Seed 10 vs Seed 20.<br>
+          Unrated players (seats 18–20) face the middle of the rated pack (seeds 8–10), not the top seeds.
+        </div>
+
+        <div class="pair-info">
+          <strong>⚡ ROUNDS 2+ — Score Group Pairing</strong><br>
+          Players are grouped by their current <em>total score</em> (points). Within each group:<br>
+          • The group is split into S1 (top half by standing) and S2 (bottom half).<br>
+          • S1[1] is paired against S2[1], S1[2] vs S2[2], and so on.<br>
+          • If a pairing is illegal (rematch, color conflict), the system tries alternative S2 partners using a score function.<br><br>
+          <strong>Floaters:</strong> If a player can't be paired in their score group (odd size or no legal partner), they "float down" to the next lower score group and are prepended to it.
+        </div>
+
+        <div class="pair-info">
+          <strong>🎨 COLOR ASSIGNMENT (FIDE C.04.3 Rules)</strong><br>
+          For every pairing, the system computes each player's <em>Color Difference (CD = Whites − Blacks)</em>:<br><br>
+          • <strong>|CD| ≥ 2 → MUST</strong> receive the color they're owed (strong obligation).<br>
+          • <strong>Last 2 games same color → SHOULD</strong> switch (mild obligation).<br>
+          • <strong>No player ever gets the same color 3 times in a row</strong> — this is a hard rule enforced automatically.<br><br>
+          When both players in a pair have conflicting color needs, the player with the higher |CD| gets priority.
+        </div>
+
+        <div class="pair-info">
+          <strong>🤝 BYE ASSIGNMENT</strong><br>
+          If there is an odd number of players, the lowest-ranked player who has <em>not yet received a bye</em> gets a full-point bye (+1). This rotates so no player gets two byes if avoidable.
+        </div>
+
+        <div class="pair-info">
+          <strong>🚫 REMATCH PREVENTION</strong><br>
+          The engine tracks every game played. If two players have already met, pairing them again is penalized heavily (−60 score) and avoided unless no legal alternative exists. A database-level double-pairing check also runs before every round is committed.
+        </div>
+
+        <div class="pair-info">
+          <strong>📊 TIEBREAK ORDER (configurable)</strong><br>
+          When players have equal points, standings are determined by:<br>
+          <strong>BH</strong> (Buchholz) → <strong>BH-C1</strong> (drop lowest opponent) → <strong>Med-BH</strong> (drop highest+lowest) → <strong>SB</strong> (Sonneborn-Berger) → <strong>Wins</strong> → <strong>Progressive Score</strong><br><br>
+          You can change the tiebreak order before starting the tournament via the "Tiebreaks" dropdown.
+        </div>
+
+        <div class="pair-info">
+          <strong>♟ UNRATED PLAYERS</strong><br>
+          • Before Round 1: Placed at the very bottom of the seed list, below all rated players. Sorted alphabetically among themselves.<br>
+          • Round 1: Face middle-tier rated players (not top seeds).<br>
+          • Round 2+: Paired purely by score — if an unrated player wins, they face winners regardless of rating.<br>
+          • For Buchholz calculations, opponents' actual tournament scores are used; the unrated player's initial rating does not affect the calculation.
+        </div>
+
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDERING
+// ═══════════════════════════════════════════════════════════════════
+let viewRound=1, activeTab='pairings';
+
+function switchTab(tab) {
+  activeTab=tab;
+  ['pairings','standings','players','info'].forEach(t=>{
+    document.getElementById(`panel-${t}`).style.display=t===tab?'block':'none';
+    const btn=document.querySelector(`[data-tab="${t}"]`);
+    if(btn) btn.classList.toggle('active',t===tab);
+  });
+  if (tab==='standings') renderStandings();
+  if (tab==='players')   renderPlayersPanel();
+  if (tab==='info')      renderInfoPanel();
+}
+
+function renderAll() {
+  updateTopBar(); renderSbPlayers(); renderRoundNav();
+  renderPairings(); renderStandings(); renderPlayersPanel(); updateRoundStatus();
+}
+
+function updateTopBar() {
+  document.getElementById('tb-name').textContent    = DB.t.name||'—';
+  document.getElementById('tb-round').textContent   = DB.t.currentRound+'/'+DB.t.totalRounds;
+  document.getElementById('tb-players').textContent = DB.players.length;
+  const s=DB.t.status;
+  const badge=document.getElementById('tb-badge');
+  const isFinished = DB.t.started && DB.t.currentRound===DB.t.totalRounds;
+  badge.className='bdg '+(isFinished?'bdg-fin':s==='open'?'bdg-ok':'bdg-ok');
+  badge.textContent=isFinished?'FINISHED':s.toUpperCase();
+}
+
+function renderSbPlayers() {
+  const el=document.getElementById('sbPL');
+  document.getElementById('pc').textContent=DB.players.length;
+  if (!DB.players.length) { el.innerHTML='<div style="font-size:10px;color:var(--txt3);text-align:center;padding:8px">No players</div>'; return; }
+  el.innerHTML=DB.players.slice(0,60).map(p=>`
+    <div class="spitem">
+      <span class="spsno">${p.sno}</span>
+      <span class="spname" title="${esc(p.name)}">${esc(p.name)}</span>
+      <span class="sprtg">${p.isUnrated?'UR':p.rating}</span>
+      ${!DB.t.started?`<button class="spdel" onclick="removePlayer('${p.id}')">✕</button>`:''}
+    </div>`).join('')+(DB.players.length>60?`<div style="font-size:9px;color:var(--txt3);padding:3px 5px">+${DB.players.length-60} more…</div>`:'');
+}
+
+function renderRoundNav() {
+  document.getElementById('rnav').innerHTML=DB.rounds.map(r=>
+    `<button class="rnb ${r.number===viewRound?'active':''} ${r.locked?'locked':''}" onclick="setViewRound(${r.number})">R${r.number}</button>`
+  ).join('');
+
+  const cur=DB.rounds.find(r=>r.number===DB.t.currentRound);
+  const isFinished=DB.t.started && DB.t.currentRound===DB.t.totalRounds;
+
+  // Lock button: show when round is active and NOT locked
+  document.getElementById('btn-lock').style.display=(cur&&!cur.locked&&DB.t.started&&!isFinished)?'flex':'none';
+  // Unlock button: show when round IS locked (always)
+  document.getElementById('btn-unlock').style.display=(cur&&cur.locked&&DB.t.started)?'flex':'none';
+  // Pair button
+  const pb=document.getElementById('btn-pair');
+  pb.disabled=!DB.t.started||DB.t.currentRound>=DB.t.totalRounds;
+  pb.innerHTML=DB.t.currentRound>=DB.t.totalRounds?'✓ All Rounds Paired':`⚡ Pair Round ${DB.t.currentRound+1}`;
+  // Final standings button: show when at last round
+  document.getElementById('btn-final').style.display=(DB.t.started&&DB.t.currentRound>0)?'flex':'none';
+}
+
+function setViewRound(r){viewRound=r;renderRoundNav();renderPairings();}
+
+function updateRoundStatus() {
+  const r=DB.rounds.find(r=>r.number===DB.t.currentRound);
+  const el=document.getElementById('rstatus');
+  renderRoundNav();
+  if (!r){el.textContent='';return;}
+  if (r.locked){
+    const pend=r.pairings.filter(p=>!p.bye&&!p.result).length;
+    el.innerHTML=pend>0
+      ?`<span style="color:var(--amber)">🔒 Locked · ${pend} result(s) missing</span>`
+      :`<span style="color:var(--amber)">🔒 Round locked</span>`;
+    return;
+  }
+  const pend=r.pairings.filter(p=>!p.bye&&!p.result).length;
+  el.textContent=pend>0?`${pend} result(s) pending`:'✓ All results entered';
+  el.style.color=pend>0?'var(--txt3)':'var(--green)';
+}
+
+// ── PAIRINGS ──
+function renderPairings() {
+  const el=document.getElementById('pc-pairings');
+  const round=DB.rounds.find(r=>r.number===viewRound);
+  if (!round){
+    el.innerHTML=`<div class="empty"><div class="eico">♟</div><div class="ettl">No Pairings Yet</div><div class="esub">Add players and start the tournament</div></div>`;
+    return;
+  }
+  const locked=round.locked;
+  const {rows}=computeStandings();
+  const rankMap={}; rows.forEach((r,i)=>rankMap[r.player.id]=i+1);
+
+  let board=1;
+  const tbody=round.pairings.map((pair)=>{
+    if (pair.bye){
+      const p=DB.pid(pair.white);
+      return `<tr id="prow_${pair.id}" class="bye-row">
+        <td class="tac mc" style="color:var(--txt3)">—</td>
+        <td class="tac mc" style="font-size:10px;color:var(--txt3)">${rankMap[pair.white]||'—'}</td>
+        <td colspan="2"><div class="pncell"><span class="ci" style="background:var(--violet);opacity:.5;color:#fff;font-size:8px">B</span>
+          <span class="pnname">${esc(p?.name||'?')}</span>${p?.isUnrated?'<span class="ur-badge">UR</span>':''}</div></td>
+        <td class="tac"><span class="byebdg">BYE +1</span></td>
+        <td colspan="3" style="font-size:10px;color:var(--txt3)">Full point awarded automatically</td>
+      </tr>`;
+    }
+
+    const wp=DB.pid(pair.white), bp=DB.pid(pair.black);
+    const brd=board++;
+    const res=pair.result;
+    const rcls=res==='1-0'?'r10':res==='0-1'?'r01':res==='½-½'?'rhh':'';
+    const hasEdits=(pair.editHistory||[]).length>0;
+
+    // Result cell: if locked AND has result → show locked badge + edit pencil
+    // if locked AND no result → show dropdown (allow entering missing results)
+    // if not locked → show dropdown
+    let resCell;
+    if (!locked){
+      resCell=`<select class="rsel" onchange="setResult(${round.number},'${pair.id}',this.value)">
+        <option value="">·</option>
+        <option value="1-0" ${res==='1-0'?'selected':''}>1 - 0</option>
+        <option value="½-½" ${res==='½-½'?'selected':''}>½ - ½</option>
+        <option value="0-1" ${res==='0-1'?'selected':''}>0 - 1</option>
+      </select>`;
+    } else if (res) {
+      resCell=`<div class="res-wrap">
+        <span class="rlk ${rcls}">${res}</span>
+        <button class="edit-btn" onclick="editResult(${round.number},'${pair.id}')" title="${hasEdits?'Result was edited':'Edit result'}">✎${hasEdits?'<span style=\'color:var(--amber);font-size:8px\'>•</span>':''}</button>
+      </div>`;
+    } else {
+      // Locked but no result yet — still allow entry
+      resCell=`<select class="rsel" style="border-color:var(--amber)" onchange="setResult(${round.number},'${pair.id}',this.value,true)">
+        <option value="">·</option>
+        <option value="1-0">1 - 0</option>
+        <option value="½-½">½ - ½</option>
+        <option value="0-1">0 - 1</option>
+      </select>`;
+    }
+
+    return `<tr id="prow_${pair.id}">
+      <td class="tac mc" style="font-size:11px;color:var(--txt3)">${brd}</td>
+      <td class="tac mc" style="font-size:10px;color:var(--txt3)">${rankMap[pair.white]||'—'}</td>
+      <td><div class="pncell">
+        <span class="ci ci-w">W</span>
+        <span class="pnname">${esc(wp?.name||'?')}</span>
+        ${wp?.country?`<span class="pnctr">${esc(wp.country)}</span>`:''}
+        ${wp?.isUnrated?'<span class="ur-badge">UR</span>':''}
+      </div></td>
+      <td class="rc tar">${wp?.isUnrated?'UR':(wp?.rating||0)}</td>
+      <td class="tac" id="rescell_${pair.id}">${resCell}</td>
+      <td><div class="pncell">
+        <span class="ci ci-b">B</span>
+        <span class="pnname">${esc(bp?.name||'?')}</span>
+        ${bp?.country?`<span class="pnctr">${esc(bp.country)}</span>`:''}
+        ${bp?.isUnrated?'<span class="ur-badge">UR</span>':''}
+      </div></td>
+      <td class="rc tar">${bp?.isUnrated?'UR':(bp?.rating||0)}</td>
+      <td class="tac mc" style="font-size:10px;color:var(--txt3)">${rankMap[pair.black]||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const completedResults=round.pairings.filter(p=>!p.bye&&p.result).length;
+  const totalGames=round.pairings.filter(p=>!p.bye).length;
+  const allDone=completedResults===totalGames;
+  const editedCount=round.pairings.filter(p=>(p.editHistory||[]).length>0).length;
+
+  el.innerHTML=`
+    ${locked?`<div class="alert aw">🔒 Round ${round.number} locked — <strong>click ✎ on any result to edit it</strong>. Use "🔓 Unlock Round" in the sidebar to fully re-open.${editedCount>0?` · <span style="color:var(--amber)">${editedCount} result(s) edited</span>`:''}</div>`:''}
+    <div class="sh">
+      <div>
+        <span class="sh-ttl">Round ${round.number} Pairings</span>
+        <span class="sh-sub">${totalGames} boards${round.pairings.some(p=>p.bye)?' · 1 bye':''} · ${completedResults}/${totalGames} results</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${allDone&&!locked?`<span style="font-size:10px;color:var(--green);font-family:'IBM Plex Mono',monospace">✓ All results entered</span>`:''}
+      </div>
+    </div>
+    <div class="twrap fu">
+      <table class="dt">
+        <thead><tr>
+          <th class="tac">Br.</th><th class="tac">Rank</th>
+          <th>White</th><th class="tar">RTG</th>
+          <th class="tac">Result</th>
+          <th>Black</th><th class="tar">RTG</th>
+          <th class="tac">Rank</th>
+        </tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── STANDINGS ──
+function renderStandings() {
+  const el=document.getElementById('pc-standings');
+  if (!DB.t.started) return;
+  const {rows}=computeStandings();
+  const tbOrder=(DB.t.tbOrder||'BH,BHC1,MBH,SB,W,P').split(',');
+  const TB_LABEL={BH:'BH',BHC1:'BH-C1',MBH:'Med-BH',SB:'SB',W:'Wins',P:'Prog',DE:'Dir.Enc'};
+  const cols=tbOrder.filter(k=>k!=='DE');
+  const hdrs=cols.map(k=>`<th class="tar">${TB_LABEL[k]||k}</th>`).join('');
+
+  const tbody=rows.map((row,i)=>{
+    const rank=i+1;
+    const rkCls=rank===1?'rk1':rank===2?'rk2':rank===3?'rk3':'';
+    const medal=rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
+    const dots=row.colorHist.map(c=>`<span class="chd ${c==='w'?'chd-w':c==='b'?'chd-b':'chd-bye'}" title="${c==='w'?'White':c==='b'?'Black':'Bye'}"></span>`).join('');
+    const tbCells=cols.map(k=>`<td class="tbc-cell">${fmtPts(row[k])}</td>`).join('');
+    return `<tr>
+      <td class="rnkcell ${rkCls}">${medal}</td>
+      <td class="tac mc" style="font-size:10px;color:var(--txt3)">${row.player.sno}</td>
+      <td><div class="pncell">
+        <span class="pnname">${esc(row.player.name)}</span>
+        ${row.player.country?`<span class="pnctr">${esc(row.player.country)}</span>`:''}
+        ${row.player.isUnrated?'<span class="ur-badge">UR</span>':''}
+      </div></td>
+      <td class="rc tar">${row.player.isUnrated?'UR':row.player.rating}</td>
+      <td class="ptsc">${fmtPts(row.pts)}</td>
+      ${tbCells}
+      <td><div class="chw">${dots}</div></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div class="sh">
+      <div><span class="sh-ttl">Live Standings</span><span class="sh-sub">After Round ${DB.t.currentRound} · TB: ${cols.join(' → ')}</span></div>
+      <button class="btn btn-grn btn-sm" onclick="showFinalStandings()">🏆 View Final Certificate</button>
+    </div>
+    <div class="twrap fu">
+      <table class="dt">
+        <thead><tr>
+          <th class="tac">#</th><th class="tac">SNo</th>
+          <th>Name</th><th class="tar">RTG</th><th class="tac">Pts</th>
+          ${hdrs}<th>Colors</th>
+        </tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;line-height:1.7">
+      BH = Buchholz &nbsp;·&nbsp; BH-C1 = Buchholz Cut-1 (drop lowest opp) &nbsp;·&nbsp; Med-BH = Median Buchholz (drop top+bottom) &nbsp;·&nbsp; SB = Sonneborn-Berger &nbsp;·&nbsp; Prog = Progressive Score
+    </div>`;
+}
+
+// ── PLAYERS ──
+function renderPlayersPanel() {
+  const el=document.getElementById('pc-players');
+  if (!DB.players.length){
+    el.innerHTML=`<div class="empty"><div class="eico">👥</div><div class="ettl">No Players</div><div class="esub">Import Excel/CSV or add manually</div></div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="sh"><div><span class="sh-ttl">Registered Players</span><span class="sh-sub">${DB.players.length}/300 · ${DB.players.filter(p=>p.isUnrated).length} unrated</span></div></div>
+    <div class="twrap fu"><table class="dt">
+      <thead><tr>
+        <th class="tac">SNo</th><th>Name</th><th class="tac">FIDE ID</th>
+        <th class="tar">Rating</th><th class="tac">FED</th><th class="tac">Type</th>
+        ${!DB.t.started?'<th></th>':''}
+      </tr></thead>
+      <tbody>${DB.players.map(p=>`<tr>
+        <td class="tac mc" style="font-size:10px;color:var(--txt3)">${p.sno}</td>
+        <td style="font-weight:500">${esc(p.name)}</td>
+        <td class="tac mc" style="font-size:10px;color:var(--txt3)">${esc(p.fideId)||'—'}</td>
+        <td class="rc tar">${p.isUnrated?`<span style="color:var(--violet)">Unrated</span>`:p.rating}</td>
+        <td class="tac mc" style="font-size:10px">${esc(p.country)||'—'}</td>
+        <td class="tac">${p.isUnrated?'<span class="ur-badge">UR</span>':'<span style="font-size:9px;color:var(--green)">Rated</span>'}</td>
+        ${!DB.t.started?`<td class="tac"><button class="btn btn-d btn-xs" onclick="removePlayer('${p.id}')">✕</button></td>`:''}
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+function fmtPts(n) {
+  if (n===undefined||n===null) return '0';
+  if (typeof n!=='number') return String(n);
+  if (n%1===0) return n.toString();
+  const w=Math.floor(n);
+  return w>0?`${w}½`:'½';
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function confirmReset() {
+  document.getElementById('mttl').textContent='Reset Tournament';
+  document.getElementById('mbody').textContent='This will permanently delete ALL tournament data including pairings, results, and players. This cannot be undone.';
+  document.getElementById('mconfirm').onclick=()=>{DB.reset();closeModal();location.reload();};
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════════
+DB.load();
+viewRound=Math.max(1,DB.t.currentRound);
+
+if (DB.t.started){
+  document.getElementById('roundControls').style.display='block';
+  document.getElementById('btn-start').disabled=true;
+  document.getElementById('f-name').value=DB.t.name;
+  document.getElementById('f-rounds').value=DB.t.totalRounds;
+}
+
+renderAll();
+
+// Demo data on first load
+if (!DB.players.length){
+  DB.bulkAdd([
+    {name:'Magnus Carlsen',         fideId:'1503014',  rating:2830,country:'NOR'},
+    {name:'Fabiano Caruana',         fideId:'2020009',  rating:2795,country:'USA'},
+    {name:'Hikaru Nakamura',         fideId:'2016192',  rating:2788,country:'USA'},
+    {name:'Ding Liren',              fideId:'8603677',  rating:2762,country:'CHN'},
+    {name:'Anish Giri',              fideId:'24116068', rating:2745,country:'NED'},
+    {name:'Wesley So',               fideId:'5202213',  rating:2741,country:'USA'},
+    {name:'Levon Aronian',           fideId:'13300474', rating:2739,country:'ARM'},
+    {name:'Ian Nepomniachtchi',      fideId:'4168119',  rating:2736,country:'RUS'},
+    {name:'Viswanathan Anand',       fideId:'5000017',  rating:2731,country:'IND'},
+    {name:'Maxime Vachier-Lagrave',  fideId:'623539',   rating:2730,country:'FRA'},
+    {name:'Richard Rapport',         fideId:'738590',   rating:2720,country:'ROU'},
+    {name:'Shakhriyar Mamedyarov',   fideId:'13401319', rating:2712,country:'AZE'},
+    {name:'Teimour Radjabov',        fideId:'13401903', rating:2706,country:'AZE'},
+    {name:'Alexander Grischuk',      fideId:'4126025',  rating:2700,country:'RUS'},
+    {name:'Leinier Dominguez',       fideId:'3503240',  rating:2698,country:'USA'},
+    {name:'Praggnanandhaa R',        fideId:'25059530', rating:2690,country:'IND'},
+    {name:'Gukesh D',                fideId:'46616543', rating:2680,country:'IND'},
+    {name:'Nodirbek Abdusattorov',   fideId:'14204118', rating:0,   country:'UZB'},
+    {name:'Javokhir Sindarov',       fideId:'14211030', rating:0,   country:'UZB'},
+  ]);
+  renderAll();
+}
+</script>
+</body>
+</html>
